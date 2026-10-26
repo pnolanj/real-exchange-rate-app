@@ -1,6 +1,5 @@
 import io
 import xml.etree.ElementTree as ET
-from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -77,24 +76,23 @@ COUNTRIES: Dict[str, str] = {
 
 
 # -----------------------------------------------------------------------------
-# INSTITUTIONAL DESIGN SYSTEM & CSS INJECTION
+# THEME-ADAPTIVE INSTITUTIONAL CSS (LIGHT & DARK MODE COMPATIBLE)
 # -----------------------------------------------------------------------------
 def inject_institutional_css() -> None:
-    """Inject enterprise-grade CSS styling for institutional typography, cards, and layout density."""
+    """
+    Inject theme-aware CSS rules utilizing Streamlit's native CSS custom properties
+    (--background-color, --secondary-background-color, --text-color) to guarantee
+    high visual contrast in both Light Mode and Dark Mode.
+    """
     st.markdown(
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-        /* Global Canvas & Typography */
         html, body, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #0F172A;
-            background-color: #F8F9FA;
-        }
-
-        .stApp {
-            background-color: #F8F9FA;
+            color: var(--text-color);
+            background-color: var(--background-color);
         }
 
         /* Tight Enterprise Container Density */
@@ -108,39 +106,66 @@ def inject_institutional_css() -> None:
 
         header[data-testid="stHeader"] {
             background: transparent !important;
-            height: 1.5rem !important;
         }
 
         /* Sidebar Styling */
         section[data-testid="stSidebar"] {
-            background-color: #FFFFFF !important;
-            border-right: 1px solid #E2E8F0 !important;
-        }
-
-        section[data-testid="stSidebar"] .block-container {
-            padding-top: 1.5rem !important;
-            padding-left: 1.25rem !important;
-            padding-right: 1.25rem !important;
+            background-color: var(--secondary-background-color) !important;
+            border-right: 1px solid rgba(128, 128, 128, 0.25) !important;
         }
 
         .sidebar-section-label {
-            font-size: 0.70rem;
+            font-size: 0.72rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.09em;
-            color: #475569;
-            margin-top: 0.75rem;
+            letter-spacing: 0.08em;
+            color: var(--text-color);
+            opacity: 0.75;
+            margin-top: 0.85rem;
             margin-bottom: 0.5rem;
-            border-bottom: 1px solid #E2E8F0;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.25);
             padding-bottom: 0.35rem;
+        }
+
+        /* Card & Metric Containers (Strict Theme Discipline) */
+        [data-testid="stMetric"], .metric-card {
+            background-color: var(--secondary-background-color) !important;
+            border: 1px solid rgba(128, 128, 128, 0.25) !important;
+            border-radius: 8px !important;
+            padding: 14px 18px !important;
+            font-variant-numeric: tabular-nums !important;
+        }
+
+        [data-testid="stMetricLabel"] p, .metric-card-label {
+            color: var(--text-color) !important;
+            opacity: 0.8 !important;
+            font-size: 0.85rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            margin-bottom: 0.25rem !important;
+        }
+
+        [data-testid="stMetricValue"] div, .metric-card-value {
+            color: var(--text-color) !important;
+            font-weight: 700 !important;
+            font-variant-numeric: tabular-nums !important;
+        }
+
+        [data-testid="stMetricDelta"] div, .metric-card-sub {
+            color: var(--text-color) !important;
+            opacity: 0.75 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-size: 0.75rem !important;
+            font-variant-numeric: tabular-nums !important;
         }
 
         /* Executive Top Banner */
         .exec-banner {
-            background-color: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-left: 4px solid #0A192F;
-            border-radius: 4px;
+            background-color: var(--secondary-background-color);
+            border: 1px solid rgba(128, 128, 128, 0.25);
+            border-left: 4px solid #3B82F6;
+            border-radius: 8px;
             padding: 1.15rem 1.5rem;
             margin-bottom: 1.25rem;
             display: flex;
@@ -148,7 +173,6 @@ def inject_institutional_css() -> None:
             align-items: center;
             flex-wrap: wrap;
             gap: 0.75rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
         }
 
         .exec-title-group {
@@ -158,17 +182,18 @@ def inject_institutional_css() -> None:
         }
 
         .exec-eyebrow {
-            font-size: 0.68rem;
+            font-size: 0.70rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.10em;
-            color: #475569;
+            color: var(--text-color);
+            opacity: 0.7;
         }
 
         .exec-title {
             font-size: 1.35rem;
             font-weight: 700;
-            color: #0A192F;
+            color: var(--text-color);
             letter-spacing: -0.02em;
             margin: 0;
             line-height: 1.25;
@@ -185,10 +210,10 @@ def inject_institutional_css() -> None:
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.72rem;
             font-weight: 500;
-            color: #1E293B;
-            background-color: #F1F5F9;
-            border: 1px solid #CBD5E1;
-            border-radius: 3px;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 4px;
             padding: 0.3rem 0.65rem;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
@@ -198,80 +223,21 @@ def inject_institutional_css() -> None:
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.72rem;
             font-weight: 600;
-            color: #2563EB;
-            background-color: #EFF6FF;
-            border: 1px solid #BFDBFE;
-            border-radius: 3px;
+            color: #3B82F6;
+            background-color: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 4px;
             padding: 0.3rem 0.65rem;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
 
-        /* Structured KPI Summary Cards */
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-
-        @media (max-width: 1100px) {
-            .kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 640px) {
-            .kpi-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .kpi-card {
-            background-color: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 4px;
-            padding: 1rem 1.25rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .kpi-label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #475569;
-            margin-bottom: 0.45rem;
-        }
-
-        .kpi-value {
-            font-size: 1.45rem;
-            font-weight: 700;
-            color: #0A192F;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-            margin-bottom: 0.4rem;
-        }
-
-        .kpi-sub {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.72rem;
-            color: #64748B;
-            font-variant-numeric: tabular-nums;
-            border-top: 1px solid #F1F5F9;
-            padding-top: 0.4rem;
-        }
-
-        /* Institutional Panels & Containers */
+        /* Institutional Panels */
         .inst-panel {
-            background-color: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 4px;
-            padding: 1.25rem 1.5rem;
+            background-color: var(--secondary-background-color);
+            border: 1px solid rgba(128, 128, 128, 0.25);
+            border-radius: 8px;
+            padding: 1.15rem 1.35rem;
             margin-bottom: 1rem;
         }
 
@@ -280,13 +246,27 @@ def inject_institutional_css() -> None:
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #1E293B;
-            border-bottom: 1px solid #E2E8F0;
+            color: var(--text-color);
+            border-bottom: 1px solid rgba(128, 128, 128, 0.25);
             padding-bottom: 0.6rem;
             margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+
+        /* Secondary Summary Strip under Chart */
+        .stat-strip {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 1100px) {
+            .stat-strip {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         /* Streamlit Tabs Overrides */
@@ -295,49 +275,20 @@ def inject_institutional_css() -> None:
             font-weight: 600 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.06em !important;
-            color: #475569 !important;
+            color: var(--text-color) !important;
+            opacity: 0.7 !important;
             padding: 0.65rem 1.25rem !important;
             background-color: transparent !important;
         }
 
         div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
-            color: #0A192F !important;
-            border-bottom: 2px solid #2563EB !important;
+            color: var(--text-color) !important;
+            opacity: 1.0 !important;
+            border-bottom: 2px solid #3B82F6 !important;
         }
 
-        /* Tabular Numerals for Metrics & Tables */
-        div[data-testid="stMetricValue"],
         div[data-testid="stDataFrame"] {
             font-variant-numeric: tabular-nums !important;
-        }
-
-        /* Secondary Summary Bar under Chart */
-        .stat-strip {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 0.75rem;
-            background-color: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 4px;
-            padding: 0.85rem 1.25rem;
-            margin-top: 0.5rem;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .stat-item-label {
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #64748B;
-        }
-
-        .stat-item-val {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.92rem;
-            font-weight: 600;
-            color: #0F172A;
-            margin-top: 0.15rem;
         }
         </style>
         """,
@@ -346,55 +297,26 @@ def inject_institutional_css() -> None:
 
 
 # -----------------------------------------------------------------------------
-# DATE NORMALIZATION UTILITIES
+# VECTORIZED DATE NORMALIZATION & RESILIENT SDMX PARSERS
 # -----------------------------------------------------------------------------
-def normalize_ym(raw_date: str) -> Optional[str]:
-    """
-    Convert SDMX monthly period representations ('1976-M01', '1976-01',
-    '1976-01-01', '1976M01') into canonical 'YYYY-MM' strings.
-    Returns None if the string does not represent a valid monthly date.
-    """
+def normalize_ym_scalar(raw_date: object) -> Optional[str]:
+    """Normalize a single SDMX monthly period token to canonical 'YYYY-MM'."""
     if raw_date is None:
         return None
-    s = str(raw_date).strip().upper()
-    if not s:
-        return None
-
-    # Handle SDMX 3.0 monthly format: YYYY-M01 or YYYYM01
-    s = s.replace("-M", "-")
+    s = str(raw_date).strip().upper().replace("-M", "-")
     if len(s) == 7 and "M" in s:
         s = s.replace("M", "-")
-
-    # Keep first 7 characters if YYYY-MM-DD
     if len(s) >= 7 and s[4] == "-":
         ym = s[:7]
-        parts = ym.split("-")
-        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-            year = int(parts[0])
-            month = int(parts[1])
-            if 1900 <= year <= 2100 and 1 <= month <= 12:
-                return f"{year:04d}-{month:02d}"
+        if ym[:4].isdigit() and ym[5:7].isdigit():
+            yr, mo = int(ym[:4]), int(ym[5:7])
+            if 1900 <= yr <= 2100 and 1 <= mo <= 12:
+                return f"{yr:04d}-{mo:02d}"
     return None
 
 
-def build_usa_fx_series(start_ym: str = START_PERIOD_YM) -> pd.Series:
-    """
-    Generate a deterministic monthly series of 1.0 for USA (USD per 1 USD)
-    from start_ym through the current month.
-    """
-    end_ym = datetime.utcnow().strftime("%Y-%m")
-    date_index = pd.date_range(start=f"{start_ym}-01", end=f"{end_ym}-01", freq="MS")
-    ym_index = [d.strftime("%Y-%m") for d in date_index]
-    return pd.Series(
-        data=1.0, index=pd.Index(ym_index, name="Date"), name="FX_USD", dtype=float
-    )
-
-
-# -----------------------------------------------------------------------------
-# RESILIENT IMF SDMX 3.0 PARSERS (CSV, JSON, XML)
-# -----------------------------------------------------------------------------
 def _parse_sdmx_csv(text: str) -> Optional[pd.Series]:
-    """Parse SDMX-CSV response into a monthly pd.Series indexed by 'YYYY-MM'."""
+    """Vectorized parser for SDMX-CSV payloads returning a monthly pd.Series indexed by 'YYYY-MM'."""
     try:
         df = pd.read_csv(io.StringIO(text))
     except Exception:
@@ -410,28 +332,38 @@ def _parse_sdmx_csv(text: str) -> Optional[pd.Series]:
     if not time_col or not val_col:
         return None
 
-    sub = df[[time_col, val_col]].copy()
-    sub["Date"] = sub[time_col].apply(normalize_ym)
-    sub["Value"] = pd.to_numeric(sub[val_col], errors="coerce")
-    sub = sub.dropna(subset=["Date", "Value"])
-    sub = sub[sub["Date"] >= START_PERIOD_YM]
+    dates = (
+        df[time_col]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .str.replace("-M", "-", regex=False)
+        .str.replace("M", "-", regex=False)
+        .str.slice(0, 7)
+    )
+    vals = pd.to_numeric(df[val_col], errors="coerce")
 
-    if sub.empty:
+    valid_mask = (
+        dates.str.match(r"^\d{4}-(0[1-9]|1[0-2])$", na=False)
+        & (dates >= START_PERIOD_YM)
+        & vals.notna()
+        & np.isfinite(vals)
+    )
+
+    if not valid_mask.any():
         return None
 
+    sub = pd.DataFrame({"Date": dates[valid_mask], "Value": vals[valid_mask]})
     sub = sub.sort_values("Date").drop_duplicates(subset=["Date"], keep="last")
     return pd.Series(
-        sub["Value"].values,
-        index=pd.Index(sub["Date"].values, name="Date"),
+        sub["Value"].to_numpy(dtype=float),
+        index=pd.Index(sub["Date"].to_numpy(), name="Date"),
         dtype=float,
     )
 
 
 def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
-    """
-    Parse SDMX-JSON (both 2.0.0 and 1.0 schemas) into a monthly pd.Series
-    indexed by 'YYYY-MM'.
-    """
+    """Parse SDMX-JSON (2.0.0 and 1.0 schemas) into a monthly pd.Series indexed by 'YYYY-MM'."""
     try:
         root = payload.get("data", payload)
         datasets = root.get("dataSets", [])
@@ -442,11 +374,9 @@ def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
         if not series_dict:
             return None
 
-        # Locate observation time dimension values across SDMX-JSON 2.0 and 1.0
         structures = root.get("structures") or []
         structure = root.get("structure") or (structures[0] if structures else {})
-        dimensions = structure.get("dimensions", {})
-        obs_dims = dimensions.get("observation", [])
+        obs_dims = structure.get("dimensions", {}).get("observation", [])
 
         time_values: List[str] = []
         for dim in obs_dims:
@@ -468,7 +398,7 @@ def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
                 if 0 <= idx < len(time_values) and obs_val_list:
                     raw_val = obs_val_list[0]
                     if raw_val is not None:
-                        ym = normalize_ym(time_values[idx])
+                        ym = normalize_ym_scalar(time_values[idx])
                         try:
                             f_val = float(raw_val)
                         except (TypeError, ValueError):
@@ -495,8 +425,7 @@ def _parse_sdmx_xml(text: str) -> Optional[pd.Series]:
 
     records: Dict[str, float] = {}
     for elem in root.iter():
-        tag_ordered = elem.tag.split("}")[-1].lower()
-        if tag_ordered == "obs":
+        if elem.tag.split("}")[-1].lower() == "obs":
             raw_t = elem.attrib.get("TIME_PERIOD") or elem.attrib.get("time_period")
             raw_v = elem.attrib.get("OBS_VALUE") or elem.attrib.get("obs_value")
 
@@ -508,7 +437,7 @@ def _parse_sdmx_xml(text: str) -> Optional[pd.Series]:
                     elif c_tag == "obsvalue":
                         raw_v = child.attrib.get("value")
 
-            ym = normalize_ym(raw_t)
+            ym = normalize_ym_scalar(raw_t)
             if ym and ym >= START_PERIOD_YM and raw_v is not None:
                 try:
                     val = float(raw_v)
@@ -526,45 +455,34 @@ def _parse_sdmx_xml(text: str) -> Optional[pd.Series]:
 
 
 # -----------------------------------------------------------------------------
-# CACHED IMF SDMX 3.0 API CLIENT
+# DECOUPLED NETWORK LAYER (PRIMITIVE SCALAR CACHE KEY, TTL = 86400s)
 # -----------------------------------------------------------------------------
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_imf_series(iso3: str, indicator_type: str) -> Tuple[pd.Series, str]:
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_imf_series(iso_code: str, series_type: str) -> Tuple[pd.Series, str]:
     """
-    Fetch monthly CPI or FX series from the IMF SDMX 3.0 API.
+    Dedicated raw HTTP client for the IMF SDMX 3.0 API.
+    Cache key relies strictly on primitive scalar arguments: (iso_code, series_type).
 
     Parameters
     ----------
-    iso3 : str
-        3-letter ISO country code (or IMF aggregate code such as 'G163').
-    indicator_type : str
-        Either 'CPI' (for {ISO3}.CPI._T.IX.M) or 'FX' (for {ISO3}.XDC_USD.PA_RT.M).
-
-    Returns
-    -------
-    Tuple[pd.Series, str]
-        - Monthly pandas Series indexed by 'YYYY-MM'
-        - Diagnostic source URL / status string
+    iso_code : str
+        ISO3 country code (e.g., 'GBR', 'USA', 'G163').
+    series_type : str
+        'CPI' -> {ISO3}.CPI._T.IX.M
+        'FX'  -> {ISO3}.XDC_USD.PA_RT.M
     """
-    iso3_clean = iso3.strip().upper()
+    iso_clean = str(iso_code).strip().upper()
+    stype_clean = str(series_type).strip().upper()
 
-    # CRITICAL USA EDGE CASE: USA FX per 1 USD is strictly 1.0 for all months
-    if indicator_type == "FX" and iso3_clean == "USA":
-        return (
-            build_usa_fx_series(START_PERIOD_YM),
-            "Deterministic Invariant: USA.XDC_USD.PA_RT.M = 1.0000",
-        )
-
-    if indicator_type == "CPI":
-        series_key = f"{iso3_clean}.CPI._T.IX.M"
+    if stype_clean == "CPI":
+        series_key = f"{iso_clean}.CPI._T.IX.M"
         candidate_dataflows = ["CPI", "IFS"]
-    elif indicator_type == "FX":
-        series_key = f"{iso3_clean}.XDC_USD.PA_RT.M"
+    elif stype_clean == "FX":
+        series_key = f"{iso_clean}.XDC_USD.PA_RT.M"
         candidate_dataflows = ["ER", "IFS"]
     else:
-        raise ValueError(f"Unsupported indicator_type: {indicator_type}")
+        raise ValueError(f"Unsupported series_type: {series_type}")
 
-    # Build prioritized endpoint candidates across IMF SDMX 3.0 and 2.1 surfaces
     candidate_urls: List[str] = []
     for df_id in candidate_dataflows:
         candidate_urls.extend(
@@ -590,7 +508,7 @@ def fetch_imf_series(iso3: str, indicator_type: str) -> Tuple[pd.Series, str]:
 
     session = requests.Session()
     base_headers = {
-        "User-Agent": "IMF-RER-MacroAnalyzer/2.0 (Institutional Edition; Python 3.12)",
+        "User-Agent": "IMF-RER-MacroAnalyzer/3.0 (High-Performance Edition; Python 3.12)",
         "Accept-Encoding": "gzip, deflate",
     }
 
@@ -600,7 +518,7 @@ def fetch_imf_series(iso3: str, indicator_type: str) -> Tuple[pd.Series, str]:
         for fmt, accept_header in accept_profiles:
             headers = {**base_headers, "Accept": accept_header}
             try:
-                resp = session.get(url, headers=headers, timeout=20)
+                resp = session.get(url, headers=headers, timeout=15)
             except requests.RequestException as exc:
                 diagnostics.append(
                     f"{url} [{fmt}] -> Network error: {exc.__class__.__name__}"
@@ -629,7 +547,7 @@ def fetch_imf_series(iso3: str, indicator_type: str) -> Tuple[pd.Series, str]:
                 parsed = _parse_sdmx_xml(resp.text)
 
             if parsed is not None and not parsed.empty:
-                parsed.name = f"{iso3_clean}_{indicator_type}"
+                parsed.name = f"{iso_clean}_{stype_clean}"
                 return parsed, url
 
     error_summary = (
@@ -644,109 +562,110 @@ def fetch_imf_series(iso3: str, indicator_type: str) -> Tuple[pd.Series, str]:
 
 
 # -----------------------------------------------------------------------------
-# CORE ECONOMIC & MATHEMATICAL ENGINE
+# VECTORIZED BASE DATAFRAME CONSTRUCTION & IN-MEMORY SLICING
 # -----------------------------------------------------------------------------
-def assemble_base_dataframe(
-    iso1: str,
-    iso2: str,
-    fx1: pd.Series,
-    fx2: pd.Series,
-    cpi1: pd.Series,
-    cpi2: pd.Series,
-) -> pd.DataFrame:
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_merged_pair_dataset(
+    iso1: str, iso2: str
+) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
-    Merge FX1(t), FX2(t), P1(t), and P2(t) on monthly dates ('YYYY-MM') from
-    1976-01 onward, handle the USA edge case, compute S(t) and RER(t), and drop
-    any months with missing, NaN, or non-positive values.
+    Retrieve the 4 underlying series for (iso1, iso2), bypassing network calls
+    for USA.XDC_USD.PA_RT.M, and merge ONCE into a clean, date-indexed DataFrame.
     """
     iso1_clean = iso1.strip().upper()
     iso2_clean = iso2.strip().upper()
 
-    # Determine unified monthly index across CPI series
-    cpi_union_idx = cpi1.index.union(cpi2.index)
+    cpi1_s, cpi1_src = fetch_imf_series(iso1_clean, "CPI")
+    cpi2_s, cpi2_src = fetch_imf_series(iso2_clean, "CPI")
 
-    # Enforce strict USA FX = 1.0 aligned to all candidate monthly dates
-    if iso1_clean == "USA":
-        fx1 = pd.Series(
-            1.0,
-            index=cpi_union_idx.union(fx2.index),
-            name="FX1_per_USD",
-            dtype=float,
-        )
-    if iso2_clean == "USA":
-        fx2 = pd.Series(
-            1.0,
-            index=cpi_union_idx.union(fx1.index),
-            name="FX2_per_USD",
-            dtype=float,
-        )
+    # USA Numeraire Edge Case: bypass network call for USA FX entirely
+    if iso1_clean == "USA" and iso2_clean == "USA":
+        union_dates = cpi1_s.index.union(cpi2_s.index)
+        fx1_s = pd.Series(1.0, index=union_dates, name="USA_FX", dtype=float)
+        fx2_s = pd.Series(1.0, index=union_dates, name="USA_FX", dtype=float)
+        fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+        fx2_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+    elif iso1_clean == "USA":
+        fx2_s, fx2_src = fetch_imf_series(iso2_clean, "FX")
+        partner_dates = cpi1_s.index.union(cpi2_s.index).union(fx2_s.index)
+        fx1_s = pd.Series(1.0, index=partner_dates, name="USA_FX", dtype=float)
+        fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+    elif iso2_clean == "USA":
+        fx1_s, fx1_src = fetch_imf_series(iso1_clean, "FX")
+        partner_dates = cpi1_s.index.union(cpi2_s.index).union(fx1_s.index)
+        fx2_s = pd.Series(1.0, index=partner_dates, name="USA_FX", dtype=float)
+        fx2_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+    else:
+        fx1_s, fx1_src = fetch_imf_series(iso1_clean, "FX")
+        fx2_s, fx2_src = fetch_imf_series(iso2_clean, "FX")
 
     df = pd.DataFrame(
         {
-            "FX1_per_USD": fx1,
-            "FX2_per_USD": fx2,
-            "CPI_1": cpi1,
-            "CPI_2": cpi2,
+            "FX1_per_USD": fx1_s,
+            "FX2_per_USD": fx2_s,
+            "CPI_1": cpi1_s,
+            "CPI_2": cpi2_s,
         }
     )
     df.index.name = "Date"
-    df = df.reset_index()
+    df = df.sort_index()
+    df = df.loc[df.index >= START_PERIOD_YM].copy()
 
-    # Filter from 1976-01 onward
-    df = df[df["Date"] >= START_PERIOD_YM].copy()
-
-    # Coerce numeric types
-    for col in ["FX1_per_USD", "FX2_per_USD", "CPI_1", "CPI_2"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Drop missing or non-positive observations prior to computing S(t)
+    # Vectorized numeric validation & positive filtering
     df = df.dropna(subset=["FX1_per_USD", "FX2_per_USD", "CPI_1", "CPI_2"])
-    df = df[
+    valid_pos = (
         (df["FX1_per_USD"] > 0)
         & (df["FX2_per_USD"] > 0)
         & (df["CPI_1"] > 0)
         & (df["CPI_2"] > 0)
+    )
+    df = df.loc[valid_pos].copy()
+
+    # Vectorized Nominal S(t) and Real Exchange Rate RER(t)
+    df["Nominal_S_Ccy2_per_Ccy1"] = df["FX2_per_USD"] / df["FX1_per_USD"]
+    df = df.loc[
+        np.isfinite(df["Nominal_S_Ccy2_per_Ccy1"])
+        & (df["Nominal_S_Ccy2_per_Ccy1"] > 0)
     ].copy()
 
-    # S(t) = FX2(t) / FX1(t) [Units of Country 2 currency per 1 unit of Country 1 currency]
-    df["Nominal_S_Ccy2_per_Ccy1"] = df["FX2_per_USD"] / df["FX1_per_USD"]
-
-    # Drop any invalid or non-positive S(t), P1(t), P2(t)
-    df = df.replace([np.inf, -np.inf], np.nan).dropna(
-        subset=["Nominal_S_Ccy2_per_Ccy1", "CPI_1", "CPI_2"]
-    )
-    df = df[df["Nominal_S_Ccy2_per_Ccy1"] > 0].copy()
-
-    # RER(t) = S(t) * (P1(t) / P2(t))
     df["RER"] = df["Nominal_S_Ccy2_per_Ccy1"] * (df["CPI_1"] / df["CPI_2"])
+    df = df.loc[np.isfinite(df["RER"]) & (df["RER"] > 0)].copy()
 
     df["Country_1_ISO"] = iso1_clean
     df["Country_2_ISO"] = iso2_clean
 
-    df = df.sort_values("Date").reset_index(drop=True)
-    return df
+    provenance = {
+        "cpi1": cpi1_src,
+        "cpi2": cpi2_src,
+        "fx1": fx1_src,
+        "fx2": fx2_src,
+    }
+    return df, provenance
 
 
-def filter_and_normalize_sample(
-    df_valid: pd.DataFrame, start_month: str, end_month: str
-) -> pd.DataFrame:
+def slice_and_normalize_window(
+    df_base: pd.DataFrame, start_month: str, end_month: str
+) -> Tuple[Optional[pd.DataFrame], Optional[float]]:
     """
-    1. Filter valid dataframe to [start_month, end_month] inclusive FIRST.
-    2. Compute RER* = arithmetic mean of RER(t) over [start_month, end_month].
-    3. Compute Real_Index(t) = 100 * (RER(t) / RER*).
+    Slice the date-indexed base DataFrame in memory via df.loc[start_month:end_month]
+    and dynamically normalize Real_Index(t) = 100 * (RER(t) / RER*).
+    Protects against empty slices, single-observation windows, and ZeroDivisionError.
     """
-    sample = df_valid[
-        (df_valid["Date"] >= start_month) & (df_valid["Date"] <= end_month)
-    ].copy()
+    if df_base.empty or start_month > end_month:
+        return None, None
 
-    if sample.empty:
-        return sample
+    sliced = df_base.loc[start_month:end_month].copy()
+    if len(sliced) <= 1:
+        return None, None
 
-    rer_star = float(sample["RER"].mean())
-    sample["RER_Star_Sample_Mean"] = rer_star
-    sample["Real_Index"] = 100.0 * (sample["RER"] / rer_star)
+    rer_star = float(sliced["RER"].mean())
+    if not np.isfinite(rer_star) or rer_star <= 0.0:
+        return None, None
 
-    # Order columns strictly per export specification
+    sliced["RER_Star_Sample_Mean"] = rer_star
+    sliced["Real_Index"] = 100.0 * (sliced["RER"] / rer_star)
+
+    out = sliced.reset_index()
     ordered_cols = [
         "Date",
         "Country_1_ISO",
@@ -760,11 +679,11 @@ def filter_and_normalize_sample(
         "RER_Star_Sample_Mean",
         "Real_Index",
     ]
-    return sample[ordered_cols].reset_index(drop=True)
+    return out[ordered_cols], rer_star
 
 
 # -----------------------------------------------------------------------------
-# INSTITUTIONAL PLOTLY CHARTING ENGINE
+# THEME-ADAPTIVE PLOTLY VISUALIZATION ENGINE
 # -----------------------------------------------------------------------------
 def build_exchange_rate_chart(
     sample_df: pd.DataFrame,
@@ -777,19 +696,23 @@ def build_exchange_rate_chart(
     end_month: str,
 ) -> go.Figure:
     """
-    Build institutional Plotly figure for 'Real', 'Nominal', or 'Both' modes.
-    - Real Index line: Deep Navy (#0F172A, width 2.5)
-    - Nominal S(t) line: Muted Slate/Steel (#64748B, width 2.0)
-    - Period Mean reference line: Dashed Neutral Silver (#94A3B8)
-    - Horizontal-only subtle grid lines (#F1F5F9); no vertical grid lines.
+    Build an institutional Plotly figure with transparent canvas backgrounds
+    and high-contrast series palettes compatible with both Light and Dark themes.
     """
     plot_dates = pd.to_datetime(sample_df["Date"] + "-01")
     real_y_title = "Real Exchange Rate Index (Period Mean = 100.00)"
     nom_y_title = f"Nominal Rate S(t) ({iso2} per 1 {iso1})"
 
+    # High-contrast institutional palette legible on both #FFFFFF and #0E1117
+    real_line_color = "#3B82F6"      # Institutional Cobalt Blue
+    nominal_line_color = "#10B981"   # Institutional Emerald / Slate-Teal
+    axis_neutral_color = "#94A3B8"   # Mid-Slate neutral for ticks & labels
+    grid_color = "rgba(148, 163, 184, 0.20)"
+    axis_line_color = "rgba(148, 163, 184, 0.40)"
+
     common_hoverlabel = dict(
-        bgcolor="#0A192F",
-        bordercolor="#1E293B",
+        bgcolor="#0F172A",
+        bordercolor="#334155",
         font=dict(
             family="JetBrains Mono, Inter, monospace",
             size=12,
@@ -798,18 +721,18 @@ def build_exchange_rate_chart(
     )
 
     common_xaxis = dict(
-        title=dict(text="", font=dict(size=11, color="#475569")),
+        title=dict(text="", font=dict(size=11, color=axis_neutral_color)),
         showgrid=False,
         zeroline=False,
         showline=True,
-        linecolor="#CBD5E1",
+        linecolor=axis_line_color,
         linewidth=1,
         ticks="outside",
-        tickcolor="#CBD5E1",
+        tickcolor=axis_line_color,
         tickfont=dict(
             family="Inter, sans-serif",
             size=11,
-            color="#475569",
+            color=axis_neutral_color,
         ),
         hoverformat="%Y-%m",
     )
@@ -822,55 +745,55 @@ def build_exchange_rate_chart(
                 y=sample_df["Real_Index"],
                 mode="lines",
                 name=f"Real Exchange Rate Index ({iso1}/{iso2})",
-                line=dict(color="#0F172A", width=2.5),
+                line=dict(color=real_line_color, width=2.5),
                 hovertemplate="Real Index (Mean=100): <b>%{y:.4f}</b><extra></extra>",
             )
         )
         fig.add_hline(
             y=100.0,
             line_dash="dash",
-            line_color="#94A3B8",
+            line_color=axis_neutral_color,
             line_width=1.5,
-            annotation_text="Sample Mean Benchmark (100.0000)",
+            annotation_text="Sample Mean Benchmark (100.00)",
             annotation_position="bottom right",
             annotation_font=dict(
                 family="JetBrains Mono, monospace",
                 size=11,
-                color="#475569",
+                color=axis_neutral_color,
             ),
         )
         fig.update_layout(
             title=dict(
                 text=(
                     f"<b>Bilateral Real Exchange Rate Index</b>  "
-                    f"<span style='color:#64748B;font-size:13px;'>"
+                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
                     f"{name1} ({iso1}) vs. {name2} ({iso2})  |  {start_month} — {end_month}"
                     f"</span>"
                 ),
-                font=dict(family="Inter, sans-serif", size=15, color="#0A192F"),
+                font=dict(family="Inter, sans-serif", size=15),
                 x=0.0,
                 xanchor="left",
             ),
-            plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             hovermode="x unified",
             hoverlabel=common_hoverlabel,
             xaxis=common_xaxis,
             yaxis=dict(
                 title=dict(
                     text=real_y_title,
-                    font=dict(family="Inter, sans-serif", size=12, color="#0F172A"),
+                    font=dict(family="Inter, sans-serif", size=12, color=real_line_color),
                 ),
                 showgrid=True,
-                gridcolor="#F1F5F9",
+                gridcolor=grid_color,
                 gridwidth=1,
                 zeroline=False,
                 showline=True,
-                linecolor="#E2E8F0",
+                linecolor=axis_line_color,
                 tickfont=dict(
                     family="JetBrains Mono, monospace",
                     size=11,
-                    color="#0F172A",
+                    color=real_line_color,
                 ),
             ),
             legend=dict(
@@ -879,10 +802,11 @@ def build_exchange_rate_chart(
                 y=1.02,
                 xanchor="left",
                 x=0.0,
-                font=dict(family="Inter, sans-serif", size=12, color="#1E293B"),
+                bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
             ),
-            height=500,
-            margin=dict(l=65, r=35, t=75, b=45),
+            height=490,
+            margin=dict(l=65, r=35, t=75, b=40),
         )
 
     elif display_mode == "Nominal":
@@ -893,7 +817,7 @@ def build_exchange_rate_chart(
                 y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
                 mode="lines",
                 name=f"Nominal Spot Cross-Rate S(t): {iso2} per 1 {iso1}",
-                line=dict(color="#64748B", width=2.0),
+                line=dict(color=nominal_line_color, width=2.2),
                 hovertemplate=(
                     f"Nominal S(t): <b>%{{y:.4f}}</b> {iso2} per 1 {iso1}<extra></extra>"
                 ),
@@ -903,34 +827,34 @@ def build_exchange_rate_chart(
             title=dict(
                 text=(
                     f"<b>Bilateral Nominal Exchange Rate S(t)</b>  "
-                    f"<span style='color:#64748B;font-size:13px;'>"
+                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
                     f"Units of {iso2} Currency per 1 Unit of {iso1} Currency  |  {start_month} — {end_month}"
                     f"</span>"
                 ),
-                font=dict(family="Inter, sans-serif", size=15, color="#0A192F"),
+                font=dict(family="Inter, sans-serif", size=15),
                 x=0.0,
                 xanchor="left",
             ),
-            plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             hovermode="x unified",
             hoverlabel=common_hoverlabel,
             xaxis=common_xaxis,
             yaxis=dict(
                 title=dict(
                     text=nom_y_title,
-                    font=dict(family="Inter, sans-serif", size=12, color="#475569"),
+                    font=dict(family="Inter, sans-serif", size=12, color=nominal_line_color),
                 ),
                 showgrid=True,
-                gridcolor="#F1F5F9",
+                gridcolor=grid_color,
                 gridwidth=1,
                 zeroline=False,
                 showline=True,
-                linecolor="#E2E8F0",
+                linecolor=axis_line_color,
                 tickfont=dict(
                     family="JetBrains Mono, monospace",
                     size=11,
-                    color="#475569",
+                    color=nominal_line_color,
                 ),
             ),
             legend=dict(
@@ -939,10 +863,11 @@ def build_exchange_rate_chart(
                 y=1.02,
                 xanchor="left",
                 x=0.0,
-                font=dict(family="Inter, sans-serif", size=12, color="#1E293B"),
+                bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
             ),
-            height=500,
-            margin=dict(l=65, r=35, t=75, b=45),
+            height=490,
+            margin=dict(l=65, r=35, t=75, b=40),
         )
 
     else:  # "Both" — Dual-Axis Institutional Configuration
@@ -953,7 +878,7 @@ def build_exchange_rate_chart(
                 y=sample_df["Real_Index"],
                 mode="lines",
                 name="Real Exchange Rate Index (Left Axis, Mean = 100)",
-                line=dict(color="#0F172A", width=2.5),
+                line=dict(color=real_line_color, width=2.5),
                 hovertemplate="Real Index (Mean=100): <b>%{y:.4f}</b><extra></extra>",
             ),
             secondary_y=False,
@@ -964,7 +889,7 @@ def build_exchange_rate_chart(
                 y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
                 mode="lines",
                 name=f"Nominal S(t): {iso2} per 1 {iso1} (Right Axis)",
-                line=dict(color="#64748B", width=2.0),
+                line=dict(color=nominal_line_color, width=2.0),
                 hovertemplate=(
                     f"Nominal S(t) ({iso2}/{iso1}): <b>%{{y:.4f}}</b><extra></extra>"
                 ),
@@ -974,31 +899,31 @@ def build_exchange_rate_chart(
         fig.add_hline(
             y=100.0,
             line_dash="dash",
-            line_color="#94A3B8",
-            line_width=1.5,
+            line_color=axis_neutral_color,
+            line_width=1.4,
             secondary_y=False,
             annotation_text="Period Mean (100.00)",
             annotation_position="bottom right",
             annotation_font=dict(
                 family="JetBrains Mono, monospace",
                 size=10,
-                color="#64748B",
+                color=axis_neutral_color,
             ),
         )
         fig.update_layout(
             title=dict(
                 text=(
                     f"<b>Real Exchange Rate Index vs. Nominal Cross-Rate S(t)</b>  "
-                    f"<span style='color:#64748B;font-size:13px;'>"
+                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
                     f"{name1} ({iso1}) / {name2} ({iso2})  |  {start_month} — {end_month}"
                     f"</span>"
                 ),
-                font=dict(family="Inter, sans-serif", size=15, color="#0A192F"),
+                font=dict(family="Inter, sans-serif", size=15),
                 x=0.0,
                 xanchor="left",
             ),
-            plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             hovermode="x unified",
             hoverlabel=common_hoverlabel,
             xaxis=common_xaxis,
@@ -1008,36 +933,36 @@ def build_exchange_rate_chart(
                 y=1.03,
                 xanchor="left",
                 x=0.0,
-                bgcolor="rgba(255,255,255,0.9)",
-                font=dict(family="Inter, sans-serif", size=12, color="#0F172A"),
+                bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
             ),
-            height=520,
-            margin=dict(l=65, r=65, t=85, b=45),
+            height=510,
+            margin=dict(l=65, r=65, t=85, b=40),
         )
         fig.update_yaxes(
             title_text=real_y_title,
-            title_font=dict(family="Inter, sans-serif", size=12, color="#0F172A"),
+            title_font=dict(family="Inter, sans-serif", size=12, color=real_line_color),
             tickfont=dict(
-                family="JetBrains Mono, monospace", size=11, color="#0F172A"
+                family="JetBrains Mono, monospace", size=11, color=real_line_color
             ),
             showgrid=True,
-            gridcolor="#F1F5F9",
+            gridcolor=grid_color,
             gridwidth=1,
             zeroline=False,
             showline=True,
-            linecolor="#E2E8F0",
+            linecolor=axis_line_color,
             secondary_y=False,
         )
         fig.update_yaxes(
             title_text=nom_y_title,
-            title_font=dict(family="Inter, sans-serif", size=12, color="#64748B"),
+            title_font=dict(family="Inter, sans-serif", size=12, color=nominal_line_color),
             tickfont=dict(
-                family="JetBrains Mono, monospace", size=11, color="#64748B"
+                family="JetBrains Mono, monospace", size=11, color=nominal_line_color
             ),
             showgrid=False,
             zeroline=False,
             showline=True,
-            linecolor="#E2E8F0",
+            linecolor=axis_line_color,
             secondary_y=True,
         )
 
@@ -1050,7 +975,7 @@ def build_exchange_rate_chart(
 def render_observation_verification(
     row: pd.Series, title_label: str, iso1: str, iso2: str, n_obs: int
 ) -> None:
-    """Render institutional step-by-step arithmetic audit proof for a single monthly observation."""
+    """Render step-by-step arithmetic audit proof for a single monthly observation."""
     t_str = row["Date"]
     fx1 = float(row["FX1_per_USD"])
     fx2 = float(row["FX2_per_USD"])
@@ -1064,7 +989,7 @@ def render_observation_verification(
     st.markdown(
         f'<div class="panel-header">'
         f"<span>{title_label}</span>"
-        f'<span style="font-family:\'JetBrains Mono\',monospace;color:#2563EB;">OBS PERIOD: {t_str}</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;color:#3B82F6;">OBS PERIOD: {t_str}</span>'
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -1167,35 +1092,40 @@ def main() -> None:
         )
         if st.button("Refresh IMF SDMX 3.0 Data", use_container_width=True):
             st.cache_data.clear()
+            st.session_state.pop("active_pair_key", None)
+            st.session_state.pop("active_df_base", None)
+            st.session_state.pop("active_provenance", None)
             st.rerun()
 
-    # --- Data Retrieval from IMF SDMX 3.0 API ---
-    with st.spinner(
-        f"Synchronizing monthly CPI and FX time series for {iso1} and {iso2} via IMF SDMX 3.0 API..."
+    # --- Decoupled Network Fetch: Spinner Triggers ONLY on Country Pair Change ---
+    current_pair_key = f"{iso1}_{iso2}"
+    if (
+        st.session_state.get("active_pair_key") != current_pair_key
+        or "active_df_base" not in st.session_state
     ):
-        try:
-            cpi1_s, cpi1_src = fetch_imf_series(iso1, "CPI")
-            cpi2_s, cpi2_src = fetch_imf_series(iso2, "CPI")
-            fx1_s, fx1_src = fetch_imf_series(iso1, "FX")
-            fx2_s, fx2_src = fetch_imf_series(iso2, "FX")
-        except Exception as err:
-            st.error(f"**IMF SDMX 3.0 Data Retrieval Failure:** {err}")
-            st.info(
-                "Confirm that both selected ISO3 jurisdictions publish monthly Consumer Price Index (`CPI._T.IX.M`) "
-                "and domestic currency per USD (`XDC_USD.PA_RT.M`) series in the IMF International Financial Statistics database."
-            )
-            st.stop()
+        with st.spinner("Querying IMF SDMX gateway..."):
+            try:
+                df_base, provenance = get_merged_pair_dataset(iso1, iso2)
+            except Exception as err:
+                st.error(f"**IMF SDMX 3.0 Data Retrieval Failure:** {err}")
+                st.info(
+                    "Confirm that both selected ISO3 jurisdictions publish monthly Consumer Price Index (`CPI._T.IX.M`) "
+                    "and domestic currency per USD (`XDC_USD.PA_RT.M`) series in the IMF International Financial Statistics database."
+                )
+                st.stop()
 
-    # --- Merge & Validate Overlapping Observations ---
-    df_valid = assemble_base_dataframe(iso1, iso2, fx1_s, fx2_s, cpi1_s, cpi2_s)
+        st.session_state["active_pair_key"] = current_pair_key
+        st.session_state["active_df_base"] = df_base
+        st.session_state["active_provenance"] = provenance
+    else:
+        df_base = st.session_state["active_df_base"]
+        provenance = st.session_state["active_provenance"]
 
-    if df_valid.empty:
-        st.warning(
-            f"No valid overlapping monthly observations found for **{iso1}** and **{iso2}** from `{START_PERIOD_YM}` onward."
-        )
+    if df_base.empty or len(df_base) <= 1:
+        st.warning("Insufficient observations in selected window.")
         st.stop()
 
-    valid_months: List[str] = df_valid["Date"].tolist()
+    valid_months: List[str] = df_base.index.tolist()
     earliest_month = valid_months[0]
     latest_month = valid_months[-1]
 
@@ -1206,56 +1136,14 @@ def main() -> None:
     else:
         curr_s, curr_e = st.session_state[slider_state_key]
         if (
-            curr_s not in valid_months
-            or curr_e not in valid_months
-            or curr_s > curr_e
+            curr_s not in df_base.index
+            or curr_e not in df_base.index
+            or curr_s >= curr_e
         ):
             st.session_state[slider_state_key] = (earliest_month, latest_month)
 
-    active_start, active_end = st.session_state[slider_state_key]
-
-    # Pre-compute normalized sample dataframe for KPI cards (re-verified when slider renders)
-    sample_df = filter_and_normalize_sample(df_valid, active_start, active_end)
-    if sample_df.empty:
-        st.warning("Selected sample window contains no valid monthly observations.")
-        st.stop()
-
-    n_obs = len(sample_df)
-    rer_star_val = float(sample_df["RER_Star_Sample_Mean"].iloc[0])
-    real_idx_mean = float(sample_df["Real_Index"].mean())
-    latest_s = float(sample_df["Nominal_S_Ccy2_per_Ccy1"].iloc[-1])
-    latest_real_idx = float(sample_df["Real_Index"].iloc[-1])
-    latest_cpi1 = float(sample_df["CPI_1"].iloc[-1])
-    latest_cpi2 = float(sample_df["CPI_2"].iloc[-1])
-
-    # --- Institutional KPI Summary Cards ---
-    st.markdown(
-        f"""
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Base Country (ISO3_1)</div>
-                <div class="kpi-value">{iso1} &mdash; {name1}</div>
-                <div class="kpi-sub">Denominator of S(t) &nbsp;|&nbsp; Latest CPI_1: {latest_cpi1:.2f}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Quote Country (ISO3_2)</div>
-                <div class="kpi-value">{iso2} &mdash; {name2}</div>
-                <div class="kpi-sub">Numerator of S(t) &nbsp;|&nbsp; Latest CPI_2: {latest_cpi2:.2f}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Period Mean RER* ({active_start} to {active_end})</div>
-                <div class="kpi-value">{rer_star_val:.6f}</div>
-                <div class="kpi-sub">Mean Real Index: {real_idx_mean:.2f} &nbsp;|&nbsp; Latest S(t): {latest_s:.4f}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Total Sample Months (N)</div>
-                <div class="kpi-value">{n_obs:,} Months</div>
-                <div class="kpi-sub">Latest Real Index ({active_end}): {latest_real_idx:.2f}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # Top container placeholder so KPI cards always reflect the active slider slice
+    kpi_container = st.container()
 
     # --- Tabbed Institutional Architecture ---
     tab_chart, tab_data, tab_audit = st.tabs(
@@ -1270,7 +1158,6 @@ def main() -> None:
     # TAB 1: CHART ANALYTICS
     # =========================================================================
     with tab_chart:
-        st.markdown('<div class="inst-panel">', unsafe_allow_html=True)
         ctrl_col1, ctrl_col2 = st.columns([1.1, 2.4])
 
         with ctrl_col1:
@@ -1294,12 +1181,21 @@ def main() -> None:
             )
 
         start_month, end_month = selected_window
-        sample_df = filter_and_normalize_sample(df_valid, start_month, end_month)
+        sample_df, rer_star_val = slice_and_normalize_window(
+            df_base, start_month, end_month
+        )
+
+        # ZeroDivisionError & Empty/Single-Row Slice Protection
+        if sample_df is None or rer_star_val is None:
+            st.warning("Insufficient observations in selected window.")
+            st.stop()
+
         n_obs = len(sample_df)
-        rer_star_val = float(sample_df["RER_Star_Sample_Mean"].iloc[0])
         real_idx_mean = float(sample_df["Real_Index"].mean())
         latest_s = float(sample_df["Nominal_S_Ccy2_per_Ccy1"].iloc[-1])
         latest_real_idx = float(sample_df["Real_Index"].iloc[-1])
+        latest_cpi1 = float(sample_df["CPI_1"].iloc[-1])
+        latest_cpi2 = float(sample_df["CPI_2"].iloc[-1])
 
         fig = build_exchange_rate_chart(
             sample_df=sample_df,
@@ -1312,61 +1208,89 @@ def main() -> None:
             end_month=end_month,
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
-        # Distribution & Valuation Summary Strip
+        # Distribution & Valuation Summary Strip (.metric-card theme-adaptive containers)
         idx_min = float(sample_df["Real_Index"].min())
         idx_min_dt = sample_df.loc[sample_df["Real_Index"].idxmin(), "Date"]
         idx_max = float(sample_df["Real_Index"].max())
         idx_max_dt = sample_df.loc[sample_df["Real_Index"].idxmax(), "Date"]
-        idx_std = float(sample_df["Real_Index"].std(ddof=1)) if n_obs > 1 else 0.0
+        idx_std = float(sample_df["Real_Index"].std(ddof=1))
         deviation_pct = latest_real_idx - 100.0
 
         st.markdown(
             f"""
             <div class="stat-strip">
-                <div>
-                    <div class="stat-item-label">Sample Mean Real Index</div>
-                    <div class="stat-item-val">{real_idx_mean:.2f} (Target: 100.00)</div>
+                <div class="metric-card">
+                    <div class="metric-card-label">Sample Mean Real Index</div>
+                    <div class="metric-card-value">{real_idx_mean:.2f}</div>
+                    <div class="metric-card-sub">Target Benchmark: 100.00</div>
                 </div>
-                <div>
-                    <div class="stat-item-label">Latest Valuation Spread ({end_month})</div>
-                    <div class="stat-item-val">{deviation_pct:+.2f}% vs. Period Mean</div>
+                <div class="metric-card">
+                    <div class="metric-card-label">Valuation Spread ({end_month})</div>
+                    <div class="metric-card-value">{deviation_pct:+.2f}%</div>
+                    <div class="metric-card-sub">vs. Window Mean (100.00)</div>
                 </div>
-                <div>
-                    <div class="stat-item-label">Sample Minimum Real Index</div>
-                    <div class="stat-item-val">{idx_min:.2f} ({idx_min_dt})</div>
+                <div class="metric-card">
+                    <div class="metric-card-label">Window Minimum Index</div>
+                    <div class="metric-card-value">{idx_min:.2f}</div>
+                    <div class="metric-card-sub">Observed: {idx_min_dt}</div>
                 </div>
-                <div>
-                    <div class="stat-item-label">Sample Maximum Real Index</div>
-                    <div class="stat-item-val">{idx_max:.2f} ({idx_max_dt})</div>
+                <div class="metric-card">
+                    <div class="metric-card-label">Window Maximum Index</div>
+                    <div class="metric-card-value">{idx_max:.2f}</div>
+                    <div class="metric-card-sub">Observed: {idx_max_dt}</div>
                 </div>
-                <div>
-                    <div class="stat-item-label">Real Index Volatility (Std Dev)</div>
-                    <div class="stat-item-val">{idx_std:.2f} index pts</div>
+                <div class="metric-card">
+                    <div class="metric-card-label">Index Volatility (Std Dev)</div>
+                    <div class="metric-card-value">{idx_std:.2f} pts</div>
+                    <div class="metric-card-sub">Sample N = {n_obs:,} months</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+    # Populate Top KPI Summary Cards using native st.metric (styled by [data-testid="stMetric"])
+    with kpi_container:
+        k_col1, k_col2, k_col3, k_col4 = st.columns(4)
+        k_col1.metric(
+            label="Base Country (ISO3_1)",
+            value=f"{iso1} — {name1}",
+            delta=f"Denominator of S(t) | CPI_1: {latest_cpi1:.2f}",
+            delta_color="off",
+        )
+        k_col2.metric(
+            label="Quote Country (ISO3_2)",
+            value=f"{iso2} — {name2}",
+            delta=f"Numerator of S(t) | CPI_2: {latest_cpi2:.2f}",
+            delta_color="off",
+        )
+        k_col3.metric(
+            label=f"Period Mean RER* ({start_month} to {end_month})",
+            value=f"{rer_star_val:.6f}",
+            delta=f"Mean Index: {real_idx_mean:.2f} | S(t): {latest_s:.4f}",
+            delta_color="off",
+        )
+        k_col4.metric(
+            label="Total Sample Months (N)",
+            value=f"{n_obs:,} Months",
+            delta=f"Latest Real Index ({end_month}): {latest_real_idx:.2f}",
+            delta_color="off",
+        )
+
     # =========================================================================
     # TAB 2: TIME SERIES DATA
     # =========================================================================
     with tab_data:
-        st.markdown('<div class="inst-panel">', unsafe_allow_html=True)
         hdr_col1, hdr_col2 = st.columns([3, 1])
 
         with hdr_col1:
             st.markdown(
                 f"**Normalized Monthly Dataset: {name1} (`{iso1}`) vs. {name2} (`{iso2}`)**  \n"
-                f"<span style='color:#64748B;font-size:0.84rem;'>"
-                f"Active Window: <code>{start_month}</code> to <code>{end_month}</code> "
-                f"({n_obs:,} valid monthly observations) &nbsp;|&nbsp; "
-                f"Sample Mean RER*: <code>{rer_star_val:.6f}</code> &nbsp;|&nbsp; "
-                f"Mean Real Index: <code>{real_idx_mean:.2f}</code>"
-                f"</span>",
-                unsafe_allow_html=True,
+                f"Active Window: `{start_month}` to `{end_month}` "
+                f"(`{n_obs:,}` valid monthly observations) | "
+                f"Sample Mean $RER^*$: `{rer_star_val:.6f}` | "
+                f"Mean Real Index: `{real_idx_mean:.2f}`"
             )
 
         csv_bytes = sample_df.to_csv(index=False).encode("utf-8")
@@ -1414,13 +1338,11 @@ def main() -> None:
                 ),
             },
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # =========================================================================
     # TAB 3: METHODOLOGY & AUDIT PROOF
     # =========================================================================
     with tab_audit:
-        # --- Structural Equations Panel ---
         st.markdown('<div class="inst-panel">', unsafe_allow_html=True)
         st.markdown(
             '<div class="panel-header">'
@@ -1437,8 +1359,9 @@ def main() -> None:
                 "Constructed from period-average local currency units per $1\\text{ USD}$ "
                 "(`{ISO3}.XDC_USD.PA_RT.M`), expressing units of **Country 2** currency per 1 unit of **Country 1** currency:\n"
                 "$$S(t) = \\frac{FX_2(t)}{FX_1(t)}$$\n"
-                "*USA Edge Case Invariant*: Whenever `USA` is selected as Country 1 or Country 2, "
-                "$FX_{\\text{USA}}(t) \\equiv 1.000000$ across all monthly dates.\n\n"
+                "*USA Numeraire Invariant*: Whenever `USA` is selected as Country 1 or Country 2, "
+                "network fetching for `USA.XDC_USD.PA_RT.M` is bypassed and $FX_{\\text{USA}}(t) \\equiv 1.000000$ "
+                "is synthesized in memory across all partner dates.\n\n"
                 "**2. Bilateral Real Exchange Rate $RER(t)$**\n"
                 "Deflates nominal exchange rate movements by the ratio of monthly Consumer Price Indices "
                 "(`{ISO3}.CPI._T.IX.M`):\n"
@@ -1447,7 +1370,7 @@ def main() -> None:
         with eq_col2:
             st.markdown(
                 "**3. Dynamic Sample Window Mean $RER^*$**\n"
-                "The valid dataset is filtered to the active `[start_month, end_month]` window **first**, "
+                "The valid dataset is sliced in memory via `df.loc[start_month:end_month]` **first**, "
                 "after which the arithmetic mean $RER^*$ is computed over the $N$ valid months in the window:\n"
                 "$$RER^* = \\frac{1}{N} \\sum_{t=\\text{start}}^{\\text{end}} RER(t)$$\n"
                 "**4. Normalized Real Exchange Rate Index**\n"
@@ -1487,15 +1410,15 @@ def main() -> None:
         st.markdown(
             '<div class="panel-header">'
             "<span>IMF SDMX 3.0 Endpoint Provenance</span>"
-            "<span>LIVE CACHE TTL: 3,600 SECONDS</span>"
+            "<span>CACHE TTL: 86,400 SECONDS (24 HOURS)</span>"
             "</div>",
             unsafe_allow_html=True,
         )
         st.code(
-            f"Country 1 CPI ({iso1}) : {cpi1_src}\n"
-            f"Country 2 CPI ({iso2}) : {cpi2_src}\n"
-            f"Country 1 FX  ({iso1}) : {fx1_src}\n"
-            f"Country 2 FX  ({iso2}) : {fx2_src}",
+            f"Country 1 CPI ({iso1}) : {provenance['cpi1']}\n"
+            f"Country 2 CPI ({iso2}) : {provenance['cpi2']}\n"
+            f"Country 1 FX  ({iso1}) : {provenance['fx1']}\n"
+            f"Country 2 FX  ({iso2}) : {provenance['fx2']}",
             language="text",
         )
         st.markdown("</div>", unsafe_allow_html=True)
