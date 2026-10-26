@@ -1,3 +1,4 @@
+import bisect
 import io
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
@@ -164,7 +165,7 @@ def inject_institutional_css() -> None:
         .exec-banner {
             background-color: var(--secondary-background-color);
             border: 1px solid rgba(128, 128, 128, 0.25);
-            border-left: 4px solid #3B82F6;
+            border-left: 4px solid #2563EB;
             border-radius: 8px;
             padding: 1.15rem 1.5rem;
             margin-bottom: 1.25rem;
@@ -223,9 +224,9 @@ def inject_institutional_css() -> None:
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.72rem;
             font-weight: 600;
-            color: #3B82F6;
-            background-color: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: #2563EB;
+            background-color: rgba(37, 99, 235, 0.12);
+            border: 1px solid rgba(37, 99, 235, 0.35);
             border-radius: 4px;
             padding: 0.3rem 0.65rem;
             font-variant-numeric: tabular-nums;
@@ -284,7 +285,7 @@ def inject_institutional_css() -> None:
         div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
             color: var(--text-color) !important;
             opacity: 1.0 !important;
-            border-bottom: 2px solid #3B82F6 !important;
+            border-bottom: 2px solid #2563EB !important;
         }
 
         div[data-testid="stDataFrame"] {
@@ -315,6 +316,38 @@ def normalize_ym_scalar(raw_date: object) -> Optional[str]:
     return None
 
 
+def _clean_positive_series(s: Optional[pd.Series]) -> pd.Series:
+    """
+    Standardize a monthly Series to a sorted, unique 'YYYY-MM' index,
+    dropping any missing, NaN, infinite, or non-positive (<= 0) observations.
+    """
+    if s is None or s.empty:
+        return pd.Series(dtype=float, index=pd.Index([], name="Date"))
+
+    vals = pd.to_numeric(s, errors="coerce")
+    idx_str = pd.Index(s.index.astype(str), name="Date")
+
+    valid_mask = (
+        idx_str.str.match(r"^\d{4}-(0[1-9]|1[0-2])$", na=False)
+        & (idx_str >= START_PERIOD_YM)
+        & vals.notna()
+        & np.isfinite(vals)
+        & (vals > 0.0)
+    )
+
+    if not np.any(valid_mask):
+        return pd.Series(dtype=float, index=pd.Index([], name="Date"))
+
+    cleaned = pd.Series(
+        vals[valid_mask].to_numpy(dtype=float),
+        index=idx_str[valid_mask],
+        dtype=float,
+    )
+    cleaned = cleaned[~cleaned.index.duplicated(keep="last")].sort_index()
+    cleaned.index.name = "Date"
+    return cleaned
+
+
 def _parse_sdmx_csv(text: str) -> Optional[pd.Series]:
     """Vectorized parser for SDMX-CSV payloads returning a monthly pd.Series indexed by 'YYYY-MM'."""
     try:
@@ -343,23 +376,9 @@ def _parse_sdmx_csv(text: str) -> Optional[pd.Series]:
     )
     vals = pd.to_numeric(df[val_col], errors="coerce")
 
-    valid_mask = (
-        dates.str.match(r"^\d{4}-(0[1-9]|1[0-2])$", na=False)
-        & (dates >= START_PERIOD_YM)
-        & vals.notna()
-        & np.isfinite(vals)
-    )
-
-    if not valid_mask.any():
-        return None
-
-    sub = pd.DataFrame({"Date": dates[valid_mask], "Value": vals[valid_mask]})
-    sub = sub.sort_values("Date").drop_duplicates(subset=["Date"], keep="last")
-    return pd.Series(
-        sub["Value"].to_numpy(dtype=float),
-        index=pd.Index(sub["Date"].to_numpy(), name="Date"),
-        dtype=float,
-    )
+    raw_series = pd.Series(vals.to_numpy(), index=pd.Index(dates.to_numpy(), name="Date"))
+    cleaned = _clean_positive_series(raw_series)
+    return cleaned if not cleaned.empty else None
 
 
 def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
@@ -403,7 +422,7 @@ def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
                             f_val = float(raw_val)
                         except (TypeError, ValueError):
                             continue
-                        if ym and ym >= START_PERIOD_YM and np.isfinite(f_val):
+                        if ym and ym >= START_PERIOD_YM and np.isfinite(f_val) and f_val > 0.0:
                             records[ym] = f_val
 
         if not records:
@@ -411,7 +430,8 @@ def _parse_sdmx_json(payload: dict) -> Optional[pd.Series]:
 
         s = pd.Series(records, dtype=float)
         s.index.name = "Date"
-        return s.sort_index()
+        cleaned = _clean_positive_series(s)
+        return cleaned if not cleaned.empty else None
     except Exception:
         return None
 
@@ -441,7 +461,7 @@ def _parse_sdmx_xml(text: str) -> Optional[pd.Series]:
             if ym and ym >= START_PERIOD_YM and raw_v is not None:
                 try:
                     val = float(raw_v)
-                    if np.isfinite(val):
+                    if np.isfinite(val) and val > 0.0:
                         records[ym] = val
                 except ValueError:
                     continue
@@ -451,7 +471,8 @@ def _parse_sdmx_xml(text: str) -> Optional[pd.Series]:
 
     s = pd.Series(records, dtype=float)
     s.index.name = "Date"
-    return s.sort_index()
+    cleaned = _clean_positive_series(s)
+    return cleaned if not cleaned.empty else None
 
 
 # -----------------------------------------------------------------------------
@@ -508,7 +529,7 @@ def fetch_imf_series(iso_code: str, series_type: str) -> Tuple[pd.Series, str]:
 
     session = requests.Session()
     base_headers = {
-        "User-Agent": "IMF-RER-MacroAnalyzer/3.0 (High-Performance Edition; Python 3.12)",
+        "User-Agent": "IMF-RER-MacroAnalyzer/4.0 (Production-Hardened; Python 3.12)",
         "Accept-Encoding": "gzip, deflate",
     }
 
@@ -556,80 +577,177 @@ def fetch_imf_series(iso_code: str, series_type: str) -> Tuple[pd.Series, str]:
         else "No response from IMF SDMX endpoints."
     )
     raise RuntimeError(
-        f"Could not retrieve valid monthly observations for `{series_key}` from IMF SDMX 3.0 API. "
-        f"Diagnostics: {error_summary}"
+        f"No valid observations returned for `{series_key}`. Diagnostics: {error_summary}"
     )
 
 
 # -----------------------------------------------------------------------------
-# VECTORIZED BASE DATAFRAME CONSTRUCTION & IN-MEMORY SLICING
+# STRICT INNER-JOIN DATA PIPELINE & SAME-COUNTRY / USA SAFEGUARDS
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_merged_pair_dataset(
     iso1: str, iso2: str
 ) -> Tuple[pd.DataFrame, Dict[str, str]]:
     """
-    Retrieve the 4 underlying series for (iso1, iso2), bypassing network calls
-    for USA.XDC_USD.PA_RT.M, and merge ONCE into a clean, date-indexed DataFrame.
+    Construct the base bilateral DataFrame on the strict inner intersection of valid
+    monthly dates ('YYYY-MM').
+    - Handles Same-Country edge case (iso1 == iso2) without redundant fetches.
+    - Handles USA numeraire edge case (USA.XDC_USD.PA_RT.M = 1.0) in memory.
+    - Returns an empty DataFrame if no overlapping valid observations exist.
     """
     iso1_clean = iso1.strip().upper()
     iso2_clean = iso2.strip().upper()
 
-    cpi1_s, cpi1_src = fetch_imf_series(iso1_clean, "CPI")
-    cpi2_s, cpi2_src = fetch_imf_series(iso2_clean, "CPI")
+    empty_df = pd.DataFrame()
+    empty_prov = {"cpi1": "N/A", "cpi2": "N/A", "fx1": "N/A", "fx2": "N/A"}
 
-    # USA Numeraire Edge Case: bypass network call for USA FX entirely
-    if iso1_clean == "USA" and iso2_clean == "USA":
-        union_dates = cpi1_s.index.union(cpi2_s.index)
-        fx1_s = pd.Series(1.0, index=union_dates, name="USA_FX", dtype=float)
-        fx2_s = pd.Series(1.0, index=union_dates, name="USA_FX", dtype=float)
-        fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
-        fx2_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
-    elif iso1_clean == "USA":
-        fx2_s, fx2_src = fetch_imf_series(iso2_clean, "FX")
-        partner_dates = cpi1_s.index.union(cpi2_s.index).union(fx2_s.index)
-        fx1_s = pd.Series(1.0, index=partner_dates, name="USA_FX", dtype=float)
-        fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+    # --- CASE 1: Same-Country Edge Case (Country_1 == Country_2) ---
+    if iso1_clean == iso2_clean:
+        try:
+            raw_cpi1, cpi1_src = fetch_imf_series(iso1_clean, "CPI")
+        except Exception:
+            return empty_df, empty_prov
+
+        cpi1_s = _clean_positive_series(raw_cpi1)
+        if cpi1_s.empty:
+            return empty_df, empty_prov
+
+        if iso1_clean == "USA":
+            fx1_s = pd.Series(1.0, index=cpi1_s.index, name="USA_FX", dtype=float)
+            fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0000"
+        else:
+            try:
+                raw_fx1, fx1_src = fetch_imf_series(iso1_clean, "FX")
+                fx1_s = _clean_positive_series(raw_fx1)
+            except Exception:
+                fx1_s = pd.Series(dtype=float, index=pd.Index([], name="Date"))
+                fx1_src = "Unavailable"
+
+            if fx1_s.empty:
+                return empty_df, empty_prov
+
+        # Strict inner intersection of valid dates
+        common_idx = cpi1_s.index.intersection(fx1_s.index).sort_values()
+        if len(common_idx) == 0:
+            return empty_df, empty_prov
+
+        cpi_aligned = cpi1_s.reindex(common_idx)
+        fx_aligned = fx1_s.reindex(common_idx)
+
+        df = pd.DataFrame(
+            {
+                "FX1_per_USD": fx_aligned,
+                "FX2_per_USD": fx_aligned.copy(),
+                "CPI_1": cpi_aligned,
+                "CPI_2": cpi_aligned.copy(),
+                "Nominal_S_Ccy2_per_Ccy1": 1.0,
+                "RER": 1.0,
+                "Country_1_ISO": iso1_clean,
+                "Country_2_ISO": iso2_clean,
+            },
+            index=common_idx,
+        )
+        df.index.name = "Date"
+        provenance = {
+            "cpi1": cpi1_src,
+            "cpi2": f"Identical Base/Quote Short-Circuit ({cpi1_src})",
+            "fx1": fx1_src,
+            "fx2": f"Identical Base/Quote Short-Circuit ({fx1_src})",
+        }
+        return df, provenance
+
+    # --- CASE 2: Distinct Countries (Strict Inner-Join Pipeline) ---
+    try:
+        raw_cpi1, cpi1_src = fetch_imf_series(iso1_clean, "CPI")
+        raw_cpi2, cpi2_src = fetch_imf_series(iso2_clean, "CPI")
+    except Exception:
+        return empty_df, empty_prov
+
+    cpi1_s = _clean_positive_series(raw_cpi1)
+    cpi2_s = _clean_positive_series(raw_cpi2)
+
+    if cpi1_s.empty or cpi2_s.empty:
+        return empty_df, empty_prov
+
+    cpi_common_idx = cpi1_s.index.intersection(cpi2_s.index)
+    if len(cpi_common_idx) == 0:
+        return empty_df, empty_prov
+
+    if iso1_clean == "USA":
+        try:
+            raw_fx2, fx2_src = fetch_imf_series(iso2_clean, "FX")
+        except Exception:
+            return empty_df, empty_prov
+        fx2_s = _clean_positive_series(raw_fx2)
+        common_idx = cpi_common_idx.intersection(fx2_s.index).sort_values()
+        if len(common_idx) == 0:
+            return empty_df, empty_prov
+        fx1_s = pd.Series(1.0, index=common_idx, name="USA_FX", dtype=float)
+        fx1_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0000"
     elif iso2_clean == "USA":
-        fx1_s, fx1_src = fetch_imf_series(iso1_clean, "FX")
-        partner_dates = cpi1_s.index.union(cpi2_s.index).union(fx1_s.index)
-        fx2_s = pd.Series(1.0, index=partner_dates, name="USA_FX", dtype=float)
-        fx2_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0"
+        try:
+            raw_fx1, fx1_src = fetch_imf_series(iso1_clean, "FX")
+        except Exception:
+            return empty_df, empty_prov
+        fx1_s = _clean_positive_series(raw_fx1)
+        common_idx = cpi_common_idx.intersection(fx1_s.index).sort_values()
+        if len(common_idx) == 0:
+            return empty_df, empty_prov
+        fx2_s = pd.Series(1.0, index=common_idx, name="USA_FX", dtype=float)
+        fx2_src = "Synthetic In-Memory Numeraire: USA.XDC_USD.PA_RT.M = 1.0000"
     else:
-        fx1_s, fx1_src = fetch_imf_series(iso1_clean, "FX")
-        fx2_s, fx2_src = fetch_imf_series(iso2_clean, "FX")
+        try:
+            raw_fx1, fx1_src = fetch_imf_series(iso1_clean, "FX")
+            raw_fx2, fx2_src = fetch_imf_series(iso2_clean, "FX")
+        except Exception:
+            return empty_df, empty_prov
+        fx1_s = _clean_positive_series(raw_fx1)
+        fx2_s = _clean_positive_series(raw_fx2)
+        common_idx = (
+            cpi_common_idx.intersection(fx1_s.index)
+            .intersection(fx2_s.index)
+            .sort_values()
+        )
+        if len(common_idx) == 0:
+            return empty_df, empty_prov
 
+    # Reindex all 4 series strictly to the inner intersection of valid monthly dates
     df = pd.DataFrame(
         {
-            "FX1_per_USD": fx1_s,
-            "FX2_per_USD": fx2_s,
-            "CPI_1": cpi1_s,
-            "CPI_2": cpi2_s,
-        }
+            "FX1_per_USD": fx1_s.reindex(common_idx),
+            "FX2_per_USD": fx2_s.reindex(common_idx),
+            "CPI_1": cpi1_s.reindex(common_idx),
+            "CPI_2": cpi2_s.reindex(common_idx),
+        },
+        index=common_idx,
     )
     df.index.name = "Date"
-    df = df.sort_index()
-    df = df.loc[df.index >= START_PERIOD_YM].copy()
 
-    # Vectorized numeric validation & positive filtering
+    # Drop any residual missing or non-positive values
     df = df.dropna(subset=["FX1_per_USD", "FX2_per_USD", "CPI_1", "CPI_2"])
-    valid_pos = (
-        (df["FX1_per_USD"] > 0)
-        & (df["FX2_per_USD"] > 0)
-        & (df["CPI_1"] > 0)
-        & (df["CPI_2"] > 0)
+    valid_mask = (
+        (df["FX1_per_USD"] > 0.0)
+        & (df["FX2_per_USD"] > 0.0)
+        & (df["CPI_1"] > 0.0)
+        & (df["CPI_2"] > 0.0)
     )
-    df = df.loc[valid_pos].copy()
+    df = df.loc[valid_mask].copy()
+    if df.empty:
+        return empty_df, empty_prov
 
-    # Vectorized Nominal S(t) and Real Exchange Rate RER(t)
+    # Vectorized bilateral nominal cross-rate S(t) and Real Exchange Rate RER(t)
     df["Nominal_S_Ccy2_per_Ccy1"] = df["FX2_per_USD"] / df["FX1_per_USD"]
-    df = df.loc[
-        np.isfinite(df["Nominal_S_Ccy2_per_Ccy1"])
-        & (df["Nominal_S_Ccy2_per_Ccy1"] > 0)
-    ].copy()
-
     df["RER"] = df["Nominal_S_Ccy2_per_Ccy1"] * (df["CPI_1"] / df["CPI_2"])
-    df = df.loc[np.isfinite(df["RER"]) & (df["RER"] > 0)].copy()
+
+    finite_mask = (
+        np.isfinite(df["Nominal_S_Ccy2_per_Ccy1"])
+        & (df["Nominal_S_Ccy2_per_Ccy1"] > 0.0)
+        & np.isfinite(df["RER"])
+        & (df["RER"] > 0.0)
+    )
+    df = df.loc[finite_mask].copy()
+    if df.empty:
+        return empty_df, empty_prov
 
     df["Country_1_ISO"] = iso1_clean
     df["Country_2_ISO"] = iso2_clean
@@ -641,6 +759,80 @@ def get_merged_pair_dataset(
         "fx2": fx2_src,
     }
     return df, provenance
+
+
+# -----------------------------------------------------------------------------
+# DYNAMIC SLIDER SESSION-STATE GUARD & IN-MEMORY SLICING
+# -----------------------------------------------------------------------------
+def _snap_to_valid_month(target_ym: str, valid_months: List[str], prefer_upper: bool) -> str:
+    """
+    Clamp and snap an arbitrary 'YYYY-MM' string to a guaranteed member
+    of the sorted `valid_months` list using binary search.
+    """
+    if target_ym <= valid_months[0]:
+        return valid_months[0]
+    if target_ym >= valid_months[-1]:
+        return valid_months[-1]
+
+    idx = bisect.bisect_left(valid_months, target_ym)
+    if idx < len(valid_months) and valid_months[idx] == target_ym:
+        return valid_months[idx]
+
+    if prefer_upper:
+        return valid_months[min(idx, len(valid_months) - 1)]
+    return valid_months[max(0, idx - 1)]
+
+
+def synchronize_slider_session_state(
+    valid_months: List[str], current_pair_key: str
+) -> Tuple[str, str]:
+    """
+    Ensure `st.session_state.selected_dates` is always a valid 2-tuple of
+    (start_month, end_month) strictly contained within `valid_months`.
+    - Resets to (valid_min, valid_max) on first load or when the user switches country pairs
+      if existing bounds are invalid.
+    - Clamps out-of-bounds session-state values into [valid_min, valid_max] before rendering
+      the slider to eliminate StreamlitAPIException crashes.
+    """
+    valid_min = valid_months[0]
+    valid_max = valid_months[-1]
+
+    prev_pair = st.session_state.get("slider_bound_pair_key")
+
+    if "selected_dates" not in st.session_state:
+        st.session_state.selected_dates = (valid_min, valid_max)
+        st.session_state["slider_bound_pair_key"] = current_pair_key
+        return valid_min, valid_max
+
+    raw_val = st.session_state.selected_dates
+    if not isinstance(raw_val, (tuple, list)) or len(raw_val) != 2:
+        st.session_state.selected_dates = (valid_min, valid_max)
+        st.session_state["slider_bound_pair_key"] = current_pair_key
+        return valid_min, valid_max
+
+    raw_start, raw_end = str(raw_val[0]), str(raw_val[1])
+
+    # Clamp and snap both bounds into the active valid_months list
+    clamped_start = _snap_to_valid_month(raw_start, valid_months, prefer_upper=True)
+    clamped_end = _snap_to_valid_month(raw_end, valid_months, prefer_upper=False)
+
+    # If the country pair changed and previous bounds were full-range or collapsed after clamping,
+    # ensure a valid non-empty span (at least 2 observations)
+    start_pos = bisect.bisect_left(valid_months, clamped_start)
+    end_pos = bisect.bisect_left(valid_months, clamped_end)
+
+    if start_pos >= end_pos:
+        clamped_start, clamped_end = valid_min, valid_max
+    elif prev_pair != current_pair_key and (
+        raw_start < valid_min or raw_end > valid_max
+    ):
+        # Keep the clamped intersection if it spans >= 2 months, otherwise reset to full overlap
+        if (end_pos - start_pos) < 1:
+            clamped_start, clamped_end = valid_min, valid_max
+
+    st.session_state.selected_dates = (clamped_start, clamped_end)
+    st.session_state["slider_bound_pair_key"] = current_pair_key
+    return clamped_start, clamped_end
 
 
 def slice_and_normalize_window(
@@ -683,7 +875,16 @@ def slice_and_normalize_window(
 
 
 # -----------------------------------------------------------------------------
-# THEME-ADAPTIVE PLOTLY VISUALIZATION ENGINE
+# HIGH-EFFICIENCY CACHED CSV SERIALIZATION
+# -----------------------------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def convert_df_to_csv(df: pd.DataFrame) -> bytes:
+    """Serialize the filtered sample DataFrame to UTF-8 CSV bytes with caching."""
+    return df.to_csv(index=False).encode("utf-8")
+
+
+# -----------------------------------------------------------------------------
+# UNIFIED PLOTLY SUBPLOT ENGINE (ZERO AXIS MISMATCH BUGS)
 # -----------------------------------------------------------------------------
 def build_exchange_rate_chart(
     sample_df: pd.DataFrame,
@@ -696,17 +897,21 @@ def build_exchange_rate_chart(
     end_month: str,
 ) -> go.Figure:
     """
-    Build an institutional Plotly figure with transparent canvas backgrounds
-    and high-contrast series palettes compatible with both Light and Dark themes.
+    Unified Plotly engine built strictly on make_subplots(specs=[[{"secondary_y": True}]])
+    across all three display modes ('Real', 'Nominal', 'Both').
     """
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     plot_dates = pd.to_datetime(sample_df["Date"] + "-01")
-    real_y_title = "Real Exchange Rate Index (Period Mean = 100.00)"
-    nom_y_title = f"Nominal Rate S(t) ({iso2} per 1 {iso1})"
 
-    # High-contrast institutional palette legible on both #FFFFFF and #0E1117
-    real_line_color = "#3B82F6"      # Institutional Cobalt Blue
-    nominal_line_color = "#10B981"   # Institutional Emerald / Slate-Teal
-    axis_neutral_color = "#94A3B8"   # Mid-Slate neutral for ticks & labels
+    real_axis_title = "Real Exchange Rate Index (Period Avg = 100)"
+    nominal_axis_title = (
+        f"Nominal S(t) [Units of Ccy 2 ({iso2}) per 1 Unit of Ccy 1 ({iso1})]"
+    )
+
+    # Institutional high-contrast palette
+    deep_blue = "#2563EB"
+    amber_gold = "#F59E0B"
+    axis_neutral = "#94A3B8"
     grid_color = "rgba(148, 163, 184, 0.20)"
     axis_line_color = "rgba(148, 163, 184, 0.40)"
 
@@ -721,7 +926,7 @@ def build_exchange_rate_chart(
     )
 
     common_xaxis = dict(
-        title=dict(text="", font=dict(size=11, color=axis_neutral_color)),
+        title=dict(text="", font=dict(size=11, color=axis_neutral)),
         showgrid=False,
         zeroline=False,
         showline=True,
@@ -732,218 +937,42 @@ def build_exchange_rate_chart(
         tickfont=dict(
             family="Inter, sans-serif",
             size=11,
-            color=axis_neutral_color,
+            color=axis_neutral,
         ),
         hoverformat="%Y-%m",
     )
 
     if display_mode == "Real":
-        fig = go.Figure()
         fig.add_trace(
             go.Scatter(
                 x=plot_dates,
                 y=sample_df["Real_Index"],
                 mode="lines",
                 name=f"Real Exchange Rate Index ({iso1}/{iso2})",
-                line=dict(color=real_line_color, width=2.5),
-                hovertemplate="Real Index (Mean=100): <b>%{y:.4f}</b><extra></extra>",
-            )
+                line=dict(color=deep_blue, width=2.5),
+                hovertemplate="Real Index (Avg=100): <b>%{y:.4f}</b><extra></extra>",
+            ),
+            secondary_y=False,
         )
         fig.add_hline(
             y=100.0,
             line_dash="dash",
-            line_color=axis_neutral_color,
+            line_color=axis_neutral,
             line_width=1.5,
-            annotation_text="Sample Mean Benchmark (100.00)",
+            secondary_y=False,
+            annotation_text="Period Average (100.00)",
             annotation_position="bottom right",
             annotation_font=dict(
                 family="JetBrains Mono, monospace",
                 size=11,
-                color=axis_neutral_color,
+                color=axis_neutral,
             ),
-        )
-        fig.update_layout(
-            title=dict(
-                text=(
-                    f"<b>Bilateral Real Exchange Rate Index</b>  "
-                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
-                    f"{name1} ({iso1}) vs. {name2} ({iso2})  |  {start_month} — {end_month}"
-                    f"</span>"
-                ),
-                font=dict(family="Inter, sans-serif", size=15),
-                x=0.0,
-                xanchor="left",
-            ),
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            hovermode="x unified",
-            hoverlabel=common_hoverlabel,
-            xaxis=common_xaxis,
-            yaxis=dict(
-                title=dict(
-                    text=real_y_title,
-                    font=dict(family="Inter, sans-serif", size=12, color=real_line_color),
-                ),
-                showgrid=True,
-                gridcolor=grid_color,
-                gridwidth=1,
-                zeroline=False,
-                showline=True,
-                linecolor=axis_line_color,
-                tickfont=dict(
-                    family="JetBrains Mono, monospace",
-                    size=11,
-                    color=real_line_color,
-                ),
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="left",
-                x=0.0,
-                bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
-            ),
-            height=490,
-            margin=dict(l=65, r=35, t=75, b=40),
-        )
-
-    elif display_mode == "Nominal":
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=plot_dates,
-                y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
-                mode="lines",
-                name=f"Nominal Spot Cross-Rate S(t): {iso2} per 1 {iso1}",
-                line=dict(color=nominal_line_color, width=2.2),
-                hovertemplate=(
-                    f"Nominal S(t): <b>%{{y:.4f}}</b> {iso2} per 1 {iso1}<extra></extra>"
-                ),
-            )
-        )
-        fig.update_layout(
-            title=dict(
-                text=(
-                    f"<b>Bilateral Nominal Exchange Rate S(t)</b>  "
-                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
-                    f"Units of {iso2} Currency per 1 Unit of {iso1} Currency  |  {start_month} — {end_month}"
-                    f"</span>"
-                ),
-                font=dict(family="Inter, sans-serif", size=15),
-                x=0.0,
-                xanchor="left",
-            ),
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            hovermode="x unified",
-            hoverlabel=common_hoverlabel,
-            xaxis=common_xaxis,
-            yaxis=dict(
-                title=dict(
-                    text=nom_y_title,
-                    font=dict(family="Inter, sans-serif", size=12, color=nominal_line_color),
-                ),
-                showgrid=True,
-                gridcolor=grid_color,
-                gridwidth=1,
-                zeroline=False,
-                showline=True,
-                linecolor=axis_line_color,
-                tickfont=dict(
-                    family="JetBrains Mono, monospace",
-                    size=11,
-                    color=nominal_line_color,
-                ),
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="left",
-                x=0.0,
-                bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
-            ),
-            height=490,
-            margin=dict(l=65, r=35, t=75, b=40),
-        )
-
-    else:  # "Both" — Dual-Axis Institutional Configuration
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-        fig.add_trace(
-            go.Scatter(
-                x=plot_dates,
-                y=sample_df["Real_Index"],
-                mode="lines",
-                name="Real Exchange Rate Index (Left Axis, Mean = 100)",
-                line=dict(color=real_line_color, width=2.5),
-                hovertemplate="Real Index (Mean=100): <b>%{y:.4f}</b><extra></extra>",
-            ),
-            secondary_y=False,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=plot_dates,
-                y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
-                mode="lines",
-                name=f"Nominal S(t): {iso2} per 1 {iso1} (Right Axis)",
-                line=dict(color=nominal_line_color, width=2.0),
-                hovertemplate=(
-                    f"Nominal S(t) ({iso2}/{iso1}): <b>%{{y:.4f}}</b><extra></extra>"
-                ),
-            ),
-            secondary_y=True,
-        )
-        fig.add_hline(
-            y=100.0,
-            line_dash="dash",
-            line_color=axis_neutral_color,
-            line_width=1.4,
-            secondary_y=False,
-            annotation_text="Period Mean (100.00)",
-            annotation_position="bottom right",
-            annotation_font=dict(
-                family="JetBrains Mono, monospace",
-                size=10,
-                color=axis_neutral_color,
-            ),
-        )
-        fig.update_layout(
-            title=dict(
-                text=(
-                    f"<b>Real Exchange Rate Index vs. Nominal Cross-Rate S(t)</b>  "
-                    f"<span style='color:{axis_neutral_color};font-size:13px;'>"
-                    f"{name1} ({iso1}) / {name2} ({iso2})  |  {start_month} — {end_month}"
-                    f"</span>"
-                ),
-                font=dict(family="Inter, sans-serif", size=15),
-                x=0.0,
-                xanchor="left",
-            ),
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            hovermode="x unified",
-            hoverlabel=common_hoverlabel,
-            xaxis=common_xaxis,
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.03,
-                xanchor="left",
-                x=0.0,
-                bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif", size=12, color=axis_neutral_color),
-            ),
-            height=510,
-            margin=dict(l=65, r=65, t=85, b=40),
         )
         fig.update_yaxes(
-            title_text=real_y_title,
-            title_font=dict(family="Inter, sans-serif", size=12, color=real_line_color),
+            title_text=real_axis_title,
+            title_font=dict(family="Inter, sans-serif", size=12, color=deep_blue),
             tickfont=dict(
-                family="JetBrains Mono, monospace", size=11, color=real_line_color
+                family="JetBrains Mono, monospace", size=11, color=deep_blue
             ),
             showgrid=True,
             gridcolor=grid_color,
@@ -954,17 +983,160 @@ def build_exchange_rate_chart(
             secondary_y=False,
         )
         fig.update_yaxes(
-            title_text=nom_y_title,
-            title_font=dict(family="Inter, sans-serif", size=12, color=nominal_line_color),
-            tickfont=dict(
-                family="JetBrains Mono, monospace", size=11, color=nominal_line_color
+            title_text="",
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            secondary_y=True,
+        )
+        chart_title = (
+            f"<b>Bilateral Real Exchange Rate Index</b>  "
+            f"<span style='color:{axis_neutral};font-size:13px;'>"
+            f"{name1} ({iso1}) vs. {name2} ({iso2})  |  {start_month} — {end_month}"
+            f"</span>"
+        )
+
+    elif display_mode == "Nominal":
+        fig.add_trace(
+            go.Scatter(
+                x=plot_dates,
+                y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
+                mode="lines",
+                name=f"Nominal S(t) [{iso2} per 1 {iso1}]",
+                line=dict(color=amber_gold, width=2.3),
+                hovertemplate=(
+                    f"Nominal S(t): <b>%{{y:.4f}}</b> {iso2} per 1 {iso1}<extra></extra>"
+                ),
             ),
+            secondary_y=False,
+        )
+        fig.update_yaxes(
+            title_text=nominal_axis_title,
+            title_font=dict(family="Inter, sans-serif", size=12, color=amber_gold),
+            tickfont=dict(
+                family="JetBrains Mono, monospace", size=11, color=amber_gold
+            ),
+            showgrid=True,
+            gridcolor=grid_color,
+            gridwidth=1,
+            zeroline=False,
+            showline=True,
+            linecolor=axis_line_color,
+            secondary_y=False,
+        )
+        fig.update_yaxes(
+            title_text="",
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            secondary_y=True,
+        )
+        chart_title = (
+            f"<b>Bilateral Nominal Exchange Rate S(t)</b>  "
+            f"<span style='color:{axis_neutral};font-size:13px;'>"
+            f"Units of {iso2} Currency per 1 Unit of {iso1} Currency  |  {start_month} — {end_month}"
+            f"</span>"
+        )
+
+    else:  # "Both"
+        fig.add_trace(
+            go.Scatter(
+                x=plot_dates,
+                y=sample_df["Real_Index"],
+                mode="lines",
+                name="Real Exchange Rate Index (Left Axis, Period Avg = 100)",
+                line=dict(color=deep_blue, width=2.5),
+                hovertemplate="Real Index (Avg=100): <b>%{y:.4f}</b><extra></extra>",
+            ),
+            secondary_y=False,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=plot_dates,
+                y=sample_df["Nominal_S_Ccy2_per_Ccy1"],
+                mode="lines",
+                name=f"Nominal S(t): {iso2} per 1 {iso1} (Right Axis)",
+                line=dict(color=amber_gold, width=2.1),
+                hovertemplate=(
+                    f"Nominal S(t) ({iso2}/{iso1}): <b>%{{y:.4f}}</b><extra></extra>"
+                ),
+            ),
+            secondary_y=True,
+        )
+        fig.add_hline(
+            y=100.0,
+            line_dash="dash",
+            line_color=axis_neutral,
+            line_width=1.4,
+            secondary_y=False,
+            annotation_text="Period Avg (100.00)",
+            annotation_position="bottom right",
+            annotation_font=dict(
+                family="JetBrains Mono, monospace",
+                size=10,
+                color=axis_neutral,
+            ),
+        )
+        fig.update_yaxes(
+            title_text=real_axis_title,
+            title_font=dict(family="Inter, sans-serif", size=12, color=deep_blue),
+            tickfont=dict(
+                family="JetBrains Mono, monospace", size=11, color=deep_blue
+            ),
+            showgrid=True,
+            gridcolor=grid_color,
+            gridwidth=1,
+            zeroline=False,
+            showline=True,
+            linecolor=axis_line_color,
+            secondary_y=False,
+        )
+        fig.update_yaxes(
+            title_text=nominal_axis_title,
+            title_font=dict(family="Inter, sans-serif", size=12, color=amber_gold),
+            tickfont=dict(
+                family="JetBrains Mono, monospace", size=11, color=amber_gold
+            ),
+            showticklabels=True,
             showgrid=False,
             zeroline=False,
             showline=True,
             linecolor=axis_line_color,
             secondary_y=True,
         )
+        chart_title = (
+            f"<b>Real Exchange Rate Index vs. Nominal Cross-Rate S(t)</b>  "
+            f"<span style='color:{axis_neutral};font-size:13px;'>"
+            f"{name1} ({iso1}) / {name2} ({iso2})  |  {start_month} — {end_month}"
+            f"</span>"
+        )
+
+    fig.update_layout(
+        title=dict(
+            text=chart_title,
+            font=dict(family="Inter, sans-serif", size=15),
+            x=0.0,
+            xanchor="left",
+        ),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        hovermode="x unified",
+        hoverlabel=common_hoverlabel,
+        xaxis=common_xaxis,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="left",
+            x=0.0,
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", size=12, color=axis_neutral),
+        ),
+        height=500,
+        margin=dict(l=65, r=65, t=85, b=40),
+    )
 
     return fig
 
@@ -989,7 +1161,7 @@ def render_observation_verification(
     st.markdown(
         f'<div class="panel-header">'
         f"<span>{title_label}</span>"
-        f'<span style="font-family:\'JetBrains Mono\',monospace;color:#3B82F6;">OBS PERIOD: {t_str}</span>'
+        f'<span style="font-family:\'JetBrains Mono\',monospace;color:#2563EB;">OBS PERIOD: {t_str}</span>'
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -1095,7 +1267,15 @@ def main() -> None:
             st.session_state.pop("active_pair_key", None)
             st.session_state.pop("active_df_base", None)
             st.session_state.pop("active_provenance", None)
+            st.session_state.pop("selected_dates", None)
+            st.session_state.pop("slider_bound_pair_key", None)
             st.rerun()
+
+    # --- Same-Country Edge Case Callout ---
+    if iso1 == iso2:
+        st.info(
+            "Identical base and quote currencies selected: Nominal S(t) = 1.0000, Real Index = 100.00."
+        )
 
     # --- Decoupled Network Fetch: Spinner Triggers ONLY on Country Pair Change ---
     current_pair_key = f"{iso1}_{iso2}"
@@ -1104,15 +1284,7 @@ def main() -> None:
         or "active_df_base" not in st.session_state
     ):
         with st.spinner("Querying IMF SDMX gateway..."):
-            try:
-                df_base, provenance = get_merged_pair_dataset(iso1, iso2)
-            except Exception as err:
-                st.error(f"**IMF SDMX 3.0 Data Retrieval Failure:** {err}")
-                st.info(
-                    "Confirm that both selected ISO3 jurisdictions publish monthly Consumer Price Index (`CPI._T.IX.M`) "
-                    "and domestic currency per USD (`XDC_USD.PA_RT.M`) series in the IMF International Financial Statistics database."
-                )
-                st.stop()
+            df_base, provenance = get_merged_pair_dataset(iso1, iso2)
 
         st.session_state["active_pair_key"] = current_pair_key
         st.session_state["active_df_base"] = df_base
@@ -1121,26 +1293,19 @@ def main() -> None:
         df_base = st.session_state["active_df_base"]
         provenance = st.session_state["active_provenance"]
 
-    if df_base.empty or len(df_base) <= 1:
+    # --- Strict Inner-Join Empty Intersection Guard ---
+    if df_base.empty:
+        st.error("No overlapping historical data available for this country pair.")
+        st.stop()
+
+    if len(df_base) <= 1:
         st.warning("Insufficient observations in selected window.")
         st.stop()
 
     valid_months: List[str] = df_base.index.tolist()
-    earliest_month = valid_months[0]
-    latest_month = valid_months[-1]
 
-    # --- Synchronize Sample Window State Across KPI Header and Tabs ---
-    slider_state_key = f"sample_window_slider_{iso1}_{iso2}"
-    if slider_state_key not in st.session_state:
-        st.session_state[slider_state_key] = (earliest_month, latest_month)
-    else:
-        curr_s, curr_e = st.session_state[slider_state_key]
-        if (
-            curr_s not in df_base.index
-            or curr_e not in df_base.index
-            or curr_s >= curr_e
-        ):
-            st.session_state[slider_state_key] = (earliest_month, latest_month)
+    # --- Dynamic Slider Session-State Guard (Clamp to [valid_min, valid_max]) ---
+    synchronize_slider_session_state(valid_months, current_pair_key)
 
     # Top container placeholder so KPI cards always reflect the active slider slice
     kpi_container = st.container()
@@ -1167,7 +1332,7 @@ def main() -> None:
                 index=2,
                 horizontal=True,
                 help=(
-                    "'Real': Normalized Real Exchange Rate Index (Period Mean = 100.00). "
+                    "'Real': Normalized Real Exchange Rate Index (Period Avg = 100). "
                     "'Nominal': Unnormalized Nominal Cross-Rate S(t) in Currency 2 per 1 Currency 1. "
                     "'Both': Dual-axis overlay comparing Real Index (left) and Nominal S(t) (right)."
                 ),
@@ -1177,7 +1342,7 @@ def main() -> None:
             selected_window = st.select_slider(
                 "Active Sample Window (YYYY-MM) — Dynamically Rebases RER* & Real Index (Mean = 100.00)",
                 options=valid_months,
-                key=slider_state_key,
+                key="selected_dates",
             )
 
         start_month, end_month = selected_window
@@ -1207,14 +1372,18 @@ def main() -> None:
             start_month=start_month,
             end_month=end_month,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"displayModeBar": False, "responsive": True},
+        )
 
         # Distribution & Valuation Summary Strip (.metric-card theme-adaptive containers)
         idx_min = float(sample_df["Real_Index"].min())
         idx_min_dt = sample_df.loc[sample_df["Real_Index"].idxmin(), "Date"]
         idx_max = float(sample_df["Real_Index"].max())
         idx_max_dt = sample_df.loc[sample_df["Real_Index"].idxmax(), "Date"]
-        idx_std = float(sample_df["Real_Index"].std(ddof=1))
+        idx_std = float(sample_df["Real_Index"].std(ddof=1)) if n_obs > 1 else 0.0
         deviation_pct = latest_real_idx - 100.0
 
         st.markdown(
@@ -1293,7 +1462,7 @@ def main() -> None:
                 f"Mean Real Index: `{real_idx_mean:.2f}`"
             )
 
-        csv_bytes = sample_df.to_csv(index=False).encode("utf-8")
+        csv_bytes = convert_df_to_csv(sample_df)
         file_name = f"IMF_RER_{iso1}_{iso2}_{start_month}_to_{end_month}.csv"
 
         with hdr_col2:
@@ -1359,9 +1528,9 @@ def main() -> None:
                 "Constructed from period-average local currency units per $1\\text{ USD}$ "
                 "(`{ISO3}.XDC_USD.PA_RT.M`), expressing units of **Country 2** currency per 1 unit of **Country 1** currency:\n"
                 "$$S(t) = \\frac{FX_2(t)}{FX_1(t)}$$\n"
-                "*USA Numeraire Invariant*: Whenever `USA` is selected as Country 1 or Country 2, "
-                "network fetching for `USA.XDC_USD.PA_RT.M` is bypassed and $FX_{\\text{USA}}(t) \\equiv 1.000000$ "
-                "is synthesized in memory across all partner dates.\n\n"
+                "*USA & Same-Country Invariants*: Whenever `USA` is selected, $FX_{\\text{USA}}(t) \\equiv 1.000000$ "
+                "is synthesized in memory. Whenever $\\text{Country}_1 == \\text{Country}_2$, "
+                "$S(t) = 1.0000$, $RER(t) = 1.0000$, and $\\text{Real Index}(t) = 100.00$.\n\n"
                 "**2. Bilateral Real Exchange Rate $RER(t)$**\n"
                 "Deflates nominal exchange rate movements by the ratio of monthly Consumer Price Indices "
                 "(`{ISO3}.CPI._T.IX.M`):\n"
@@ -1370,7 +1539,7 @@ def main() -> None:
         with eq_col2:
             st.markdown(
                 "**3. Dynamic Sample Window Mean $RER^*$**\n"
-                "The valid dataset is sliced in memory via `df.loc[start_month:end_month]` **first**, "
+                "The valid inner-join dataset is sliced in memory via `df.loc[start_month:end_month]` **first**, "
                 "after which the arithmetic mean $RER^*$ is computed over the $N$ valid months in the window:\n"
                 "$$RER^* = \\frac{1}{N} \\sum_{t=\\text{start}}^{\\text{end}} RER(t)$$\n"
                 "**4. Normalized Real Exchange Rate Index**\n"
